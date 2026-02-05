@@ -83,7 +83,7 @@ Global Forest Watch dashboard
 
 **tc_loss_ha** - Continuous
 
-### Subnational 1 Primary Loss
+#### Subnational 1 Primary Loss
 
 **country** - Nominal
 
