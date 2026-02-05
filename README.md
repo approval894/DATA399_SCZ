@@ -21,3 +21,19 @@ districtcode — Nominal
 area_m2 - continuous 
 disttonavriv - continuous 
 com_nativa - binary
+
+
+## Source 2:
+Global mining deforestation footprint data from 2000 to 2019
+## Link to Data:
+(https://zenodo.org/records/7307210/files/global_mining_forest_loss.csv?download=1
+## Variable:
+id — Nominal identifier; categorical
+id_hcluster — Nominal (cluster/group ID; categorical, no order)
+list_of_commodities — Nominal (multi-label) 
+isoa3 — Nominal 
+country — Nominal 
+ecoregion — Nominal 
+biome — Nominal
+year — ordinal
+area_forest_loss_XXX_YYY — Ratio (continuous)
