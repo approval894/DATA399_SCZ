@@ -1,0 +1,280 @@
+---
+title: "Analysis of Deforestation"
+output: html_document
+date: "2026-03-31"
+editor_options: 
+  chunk_output_type: inline
+---
+
+# Data Organization
+
+```{r}
+library(tidyverse)
+library(lme4)      # mixed models
+library(cluster)   # clustering tools
+library(broom)     # tidy model output
+library(GGally)    # pair plots
+```
+
+```{r}
+carbon <- read.csv("C:/Users/yllw1/OneDrive/Desktop/Data-399/Project Data + Resources/Data/Country_Carbon_Data.csv")
+drivers <- read.csv("C:/Users/yllw1/OneDrive/Desktop/Data-399/Project Data + Resources/Data/Country_Drivers.csv")
+primary <- read.csv("C:/Users/yllw1/OneDrive/Desktop/Data-399/Project Data + Resources/Data/Country_Primary_Loss.csv")
+tc_loss <- read.csv("C:/Users/yllw1/OneDrive/Desktop/Data-399/Project Data + Resources/Data/Country_Tree_Cover_Loss.csv")
+
+
+mdd_0108 <- read.csv("C:/Users/yllw1/OneDrive/Desktop/Data-399/Project Data + Resources/Data/Alvarez-Berrios_etal_2021_Data_2001_2008.csv")
+mdd_0914 <- read.csv("C:/Users/yllw1/OneDrive/Desktop/Data-399/Project Data + Resources/Data/Alvarez-Berrios_etal_2021_Data_2009_2014.csv")
+```
+
+```{r}
+drivers <- drivers %>%
+  select(country, threshold, driver, year, tc_loss_ha)
+```
+
+```{r}
+drivers30 <- drivers %>% filter(threshold == 30)
+primary30 <- primary %>% filter(threshold == 30)
+tc_loss30  <- tc_loss %>% filter(threshold == 30)
+carbon30   <- carbon %>% filter(umd_tree_cover_density_2000__threshold == 30)
+```
+
+```{r}
+# tree cover loss
+tc_loss_long <- tc_loss30 %>%
+  pivot_longer(
+    cols = starts_with("tc_loss_ha_"),
+    names_to = "year",
+    names_prefix = "tc_loss_ha_",
+    values_to = "tree_cover_loss_ha"
+  ) %>%
+  mutate(year = as.integer(year))
+
+# primary forest loss
+primary_long <- primary30 %>%
+  pivot_longer(
+    cols = starts_with("tc_loss_ha_"),
+    names_to = "year",
+    names_prefix = "tc_loss_ha_",
+    values_to = "primary_loss_ha"
+  ) %>%
+  mutate(year = as.integer(year))
+
+# carbon emissions
+carbon_long <- carbon30 %>%
+  pivot_longer(
+    cols = starts_with("gfw_forest_carbon_gross_emissions_") &
+      ends_with("__Mg_CO2e"),
+    names_to = "year",
+    names_pattern = "gfw_forest_carbon_gross_emissions_(\\d+)__Mg_CO2e",
+    values_to = "carbon_emissions_MgCO2e"
+  ) %>%
+  mutate(year = as.integer(year))
+
+# driver data
+drivers_wide <- drivers30 %>%
+  pivot_wider(
+    names_from = driver,
+    values_from = tc_loss_ha,
+    values_fill = 0
+  ) %>%
+  janitor::clean_names()
+```
+
+## Merge Data
+
+```{r}
+panel_data <- drivers_wide %>%
+  left_join(tc_loss_long %>% select(country, year, tree_cover_loss_ha), 
+            by = c("country", "year")) %>%
+  left_join(primary_long %>% select(country, year, primary_loss_ha), 
+            by = c("country", "year")) %>%
+  left_join(carbon_long %>% select(country, year, carbon_emissions_MgCO2e), 
+            by = c("country", "year")) %>%
+  left_join(
+    carbon30 %>%
+      select(
+        country,
+        umd_tree_cover_extent_2000__ha,
+        gfw_aboveground_carbon_stocks_2000__Mg_C,
+        avg_gfw_aboveground_carbon_stocks_2000__Mg_C_ha.1
+      ) %>%
+      distinct(),
+    by = "country"
+  )
+
+madre_all <- bind_rows(mdd_0108, mdd_0914)
+```
+
+```{r}
+head(panel_data)
+head(madre_all)
+```
+
+# EDA
+
+## Trends
+
+```{r}
+panel_data %>%
+  group_by(year) %>%
+  summarise(
+    hard_commodities = sum(hard_commodities, na.rm = TRUE),
+    tree_cover_loss_ha = sum(tree_cover_loss_ha, na.rm = TRUE),
+    primary_loss_ha = sum(primary_loss_ha, na.rm = TRUE),
+    carbon_emissions_MgCO2e = sum(carbon_emissions_MgCO2e, na.rm = TRUE)
+  ) %>%
+  pivot_longer(-year, names_to = "variable", values_to = "value") %>%
+  ggplot(aes(x = year, y = value)) +
+  geom_line() +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw()
+```
+
+## Scatterplots
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(panel_data, aes(x = hard_commodities, y = tree_cover_loss_ha,color=year)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(x='Hard-commodity-driven forest loss (ha)',
+       y="Total Tree-cover Loss (ha)",
+       title='Hard Commodities vs. Tree-cover Loss',
+       color='Year')+
+  theme_bw()
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+ggplot(panel_data, aes(x = hard_commodities, y = carbon_emissions_MgCO2e, color=year)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "loess", se = TRUE) +
+  labs(x='Hard-commodity-driven forest loss (ha)',
+       y='Forest carbon emissions (Mg CO2e)',
+       title='Hard Commodities vs Cabon Emissions',
+       color= 'Year')+
+  theme_bw()
+```
+
+## Pairs plot
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+eda_vars <- panel_data %>%
+  select(
+    tree_cover_loss_ha,
+    primary_loss_ha,
+    carbon_emissions_MgCO2e,
+    hard_commodities,
+    logging,
+    shifting_cultivation,
+    wildfire
+  ) %>%
+  drop_na()
+
+GGally::ggpairs(eda_vars)
+```
+
+## Driver Share analysis
+
+```{r}
+driver_share <- drivers30 %>%
+  group_by(country, year) %>%
+  mutate(total_driver_loss = sum(tc_loss_ha, na.rm = TRUE),
+         share = tc_loss_ha / total_driver_loss) %>%
+  ungroup()
+
+driver_share %>%
+  filter(driver == "Hard commodities") %>%
+  ggplot(aes(x = year, y = share, group = country)) +
+  geom_line(alpha = 0.2) +
+  stat_summary(aes(group = 1), fun = mean, geom = "line", linewidth = 1.2) +
+  theme_bw() +
+  labs(y = "Hard commodities share of driver-attributed loss")
+```
+
+# Explanation Analysis
+
+## MLR
+
+```{r}
+# tree cover loss
+lm1 <- lm(
+  tree_cover_loss_ha ~ hard_commodities + logging + shifting_cultivation + wildfire + factor(year),
+  data = panel_data
+)
+
+summary(lm1)
+```
+
+```{r}
+# primary cover loss
+lm2 <- lm(
+  primary_loss_ha ~ hard_commodities + logging + shifting_cultivation + wildfire + factor(year),
+  data = panel_data
+)
+
+summary(lm2)
+```
+
+```{r}
+# carbon emissions
+lm3 <- lm(
+  carbon_emissions_MgCO2e ~ hard_commodities + logging + shifting_cultivation + wildfire + factor(year),
+  data = panel_data
+)
+
+summary(lm3)
+```
+
+## Mixed Effects
+
+```{r warning=FALSE}
+# tree cover loss
+mixed1 <- lmer(
+  tree_cover_loss_ha ~ hard_commodities + logging + shifting_cultivation + wildfire + year + (1 | country),
+  data = panel_data
+)
+
+summary(mixed1)
+```
+
+```{r warning=FALSE}
+#primary loss
+mixed2 <- lmer(
+  primary_loss_ha ~ hard_commodities + logging + shifting_cultivation + wildfire + year + (1 | country),
+  data = panel_data
+)
+
+summary(mixed2)
+```
+
+```{r warning=FALSE}
+#carbon emissions
+mixed3 <- lmer(
+  carbon_emissions_MgCO2e ~ hard_commodities + logging + shifting_cultivation + wildfire + year + (1 | country),
+  data = panel_data
+)
+
+summary(mixed3)
+```
+
+## Interaction Model
+
+```{r}
+interaction_model <- lmer(
+  carbon_emissions_MgCO2e ~ hard_commodities * gfw_aboveground_carbon_stocks_2000__Mg_C +
+    year + (1 | country),
+  data = panel_data
+)
+
+summary(interaction_model)
+```
+
+```{r}
+interaction_model <- lmer(
+  primary_loss_ha ~ hard_commodities * gfw_aboveground_carbon_stocks_2000__Mg_C +
+    year + (1 | country),
+  data = panel_data
+)
+
+summary(interaction_model)
+```

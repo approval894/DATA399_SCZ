@@ -1,0 +1,76 @@
+---
+title: "Madre de dios analysis"
+output: html_document
+date: "2026-04-14"
+---
+
+```{r}
+library(tidyverse)
+
+mdd_0108 <- read.csv("Alvarez-Berrios_etal_2021_Data_2001_2008.csv")
+mdd_0914 <- read.csv("Alvarez-Berrios_etal_2021_Data_2009_2014.csv")
+
+madre_all <- bind_rows(mdd_0108, mdd_0914) %>%
+  mutate(
+    area_km2 = area_m2 / 1e6,
+    protected_area = if_else(anp_name == "NONE", 0, 1),
+    districtcode = as.factor(districtcode),
+    catastro_status = as.factor(catastro_status)
+  )
+```
+
+# Annual totals model
+
+```{r}
+annual_loss <- madre_all %>%
+  group_by(year) %>%
+  summarise(total_km2 = sum(area_km2, na.rm = TRUE), .groups = "drop")
+
+time_model <- lm(total_km2 ~ year, data = annual_loss)
+summary(time_model)
+```
+
+# Is deforestation higher inside mining zones?
+
+```{r}
+zone_model_log <- lm(log1p(area_km2) ~ zona_miner, data = madre_all)
+summary(zone_model_log)
+```
+
+# Multiple regression
+
+```{r}
+multi_model <- lm(
+  log1p(area_km2) ~ year + zona_miner + disttonavriv + protected_area + com_nativa,
+  data = madre_all
+)
+summary(multi_model)
+```
+
+```{r}
+library(broom)
+
+multi_coefs <- tidy(multi_model, conf.int = TRUE)
+
+ggplot(multi_coefs %>% filter(term != "(Intercept)"),
+       aes(x = estimate, y = reorder(term, estimate))) +
+  geom_point() +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Factors associated with mining deforestation in Madre de Dios",
+    x = "Estimated effect on log(1 + deforestation area)",
+    y = NULL
+  ) +
+  theme_bw()
+```
+
+# District adjusted model
+
+```{r}
+district_model <- lm(
+  log1p(area_km2) ~ year + zona_miner + disttonavriv + protected_area + com_nativa + districtcode,
+  data = madre_all
+)
+summary(district_model)
+```

@@ -1,0 +1,246 @@
+---
+title: "ENV DS"
+output: html_document
+date: "2026-03-05"
+---
+
+# Madre de Dios, Peru
+
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(viridis)
+d01_08=read_csv("C:/Users/yllw1/OneDrive/Desktop/Data-399/Project Data + Resources/Data/Alvarez-Berrios_etal_2021_Data_2001_2008.csv")
+d09_14=read_csv("C:/Users/yllw1/OneDrive/Desktop/Data-399/Project Data + Resources/Data/Alvarez-Berrios_etal_2021_Data_2009_2014.csv")
+
+```
+
+```{r}
+head(d01_08)
+head(d09_14)
+```
+
+```{r}
+df <- bind_rows(d01_08, d09_14) %>%
+  mutate(
+    area_km2 = area_m2 / 1e6,
+    dist_km  = disttonavriv / 1000,
+    is_protected = anp_name != "NONE")
+```
+
+```{r}
+df=df%>%
+  filter(year!=2012 & year!=2002)
+```
+
+```{r}
+df %>%
+  group_by(year) %>%
+  summarise(total_km2 = sum(area_km2, na.rm = TRUE), .groups = "drop") %>%
+  ggplot(aes(x = year, y = total_km2)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "Year",
+    y = "Mining-related deforestation (sq km)",
+    title = "Total mining-related deforestation by year"
+  )+
+  theme_bw()
+
+
+```
+
+```{r}
+# total deforestation by year for each district
+district_year <- df %>%
+  group_by(year, districtcode) %>%
+  summarise(total_km2 = sum(area_km2, na.rm = TRUE), .groups = "drop")
+
+ggplot(district_year, aes(x = year, y = total_km2,color=districtcode)) +
+  geom_line(linewidth = 0.9) +
+  facet_wrap(~ districtcode) +
+  labs(
+    x = "Year",
+    y = "Deforestation (sq km)",
+    title = "Mining-related deforestation by district over time"
+  ) +
+  theme_bw()
+```
+
+```{r}
+df %>%
+  group_by(year, zona_miner) %>%
+  summarise(total_km2 = sum(area_km2, na.rm = TRUE), .groups = "drop") %>%
+  mutate(zona_miner = factor(zona_miner)) %>%
+  ggplot(aes(x = year, y = total_km2, fill = zona_miner)) +
+  geom_area() +
+  labs(
+    x = "Year",
+    y = "Deforestation (sq km)",
+    fill = "Mining Coridor",
+    title = "Deforestation by mining corridor indicator (zona_miner)"
+  )+
+  theme_bw()
+```
+
+```{r}
+hex_xy=df %>%
+  group_by(unq, x_coord, y_coord) %>%
+  summarise(cum_km2 = sum(area_km2, na.rm = TRUE), .groups = "drop")
+
+hex_xy %>%
+  ggplot(aes(x = x_coord, y = y_coord, z = cum_km2)) +
+  stat_summary_2d(bins = 220, fun = sum) +
+  scale_fill_viridis(option='H',begin=0,end=1)+
+  labs(
+    x = "X Coordinate",
+    y = "Y Coordinate",
+    fill = "Deforestation (sq km)",
+    title = "Intensity of Deforestation in Madre De Dios, 2001–2014"
+  )+
+  theme_bw()+
+  theme(legend.position = "top")
+
+```
+
+# Global Data
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(scales)
+library(viridis)
+```
+
+```{r}
+drivers <- read_csv("C:/Users/yllw1/OneDrive/Desktop/Data-399/Project Data + Resources/Data/Country_Drivers.csv", show_col_types = FALSE)
+loss <- read_csv("C:/Users/yllw1/OneDrive/Desktop/Data-399/Project Data + Resources/Data/Country_Tree_Cover_Loss.csv", show_col_types = FALSE)
+```
+
+```{r}
+drivers <- drivers %>%
+  clean_names() %>%
+  select(country, threshold, driver, year, tc_loss_ha)
+
+loss <- loss %>%
+  clean_names()
+
+mining <- drivers %>%
+  filter(driver == "Hard commodities", threshold == 30)
+```
+
+```{r}
+loss_long <- loss %>%
+  filter(threshold == 30) %>%
+  pivot_longer(
+    cols = starts_with("tc_loss_ha_"),
+    names_to = "year",
+    values_to = "total_tc_loss_ha"
+  ) %>%
+  mutate(
+    year = str_remove(year, "tc_loss_ha_"),
+    year = as.numeric(year)
+  )
+```
+
+```{r}
+fig1_data <- mining %>%
+  group_by(year) %>%
+  summarise(mining_loss_ha = sum(tc_loss_ha, na.rm = TRUE)) %>%
+  ungroup()
+
+ggplot(fig1_data, aes(x = year, y = mining_loss_ha)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Global Mining-Related Tree Cover Loss Over Time",
+    x = "Year",
+    y = "Tree cover loss (ha)"
+  ) +
+  theme_bw()
+```
+
+```{r}
+fig2_data <- mining %>%
+  group_by(country) %>%
+  summarise(total_mining_loss_ha = sum(tc_loss_ha, na.rm = TRUE)) %>%
+  arrange(desc(total_mining_loss_ha)) %>%
+  slice_head(n = 10)
+
+ggplot(fig2_data, aes(x = reorder(country, total_mining_loss_ha), y = total_mining_loss_ha)) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Top 10 Countries by Mining-Related Tree Cover Loss",
+    x = NULL,
+    y = "Total tree cover loss (ha)"
+  ) +
+  theme_bw()
+```
+
+```{r}
+top_countries <- mining %>%
+  group_by(country) %>%
+  summarise(total_mining_loss_ha = sum(tc_loss_ha, na.rm = TRUE)) %>%
+  arrange(desc(total_mining_loss_ha)) %>%
+  slice_head(n = 8) %>%
+  pull(country)
+
+fig3_data <- mining %>%
+  filter(country %in% top_countries)
+
+ggplot(fig3_data, aes(x = year, y = tc_loss_ha, color = country)) +
+  geom_line(linewidth = 1) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Mining-Related Tree Cover Loss Over Time by Country",
+    x = "Year",
+    y = "Tree cover loss (ha)",
+    color = "Country"
+  ) +
+  theme_bw()
+```
+
+```{r}
+selected_countries <- top_countries
+
+fig4_data <- drivers %>%
+  filter(threshold == 30, country %in% selected_countries) %>%
+  group_by(country, driver) %>%
+  summarise(total_loss_ha = sum(tc_loss_ha, na.rm = TRUE)) %>%
+  ungroup()
+
+ggplot(fig4_data, aes(x = country, y = total_loss_ha, fill = driver)) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Tree Cover Loss by Driver in Selected Countries",
+    x = NULL,
+    y = "Total tree cover loss (ha)",
+    fill = "Driver"
+  ) +
+  theme_bw()
+```
+
+```{r}
+fig8_data <- mining %>%
+  filter(country %in% top_countries) %>%
+  arrange(country, year) %>%
+  group_by(country) %>%
+  mutate(cumulative_loss_ha = cumsum(tc_loss_ha)) %>%
+  ungroup()
+
+ggplot(fig8_data, aes(x = year, y = cumulative_loss_ha, color = country)) +
+  geom_line(linewidth = 1) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Cumulative Mining-Related Tree Cover Loss",
+    x = "Year",
+    y = "Cumulative loss (ha)",
+    color = "Country"
+  ) +
+  theme_bw()
+```
