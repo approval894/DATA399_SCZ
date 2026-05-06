@@ -141,7 +141,8 @@ ggplot(panel_data, aes(x = hard_commodities, y = tree_cover_loss_ha,color=year))
        y="Total Tree-cover Loss (ha)",
        title='Hard Commodities vs. Tree-cover Loss',
        color='Year')+
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "top")
 ```
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
@@ -152,7 +153,8 @@ ggplot(panel_data, aes(x = hard_commodities, y = carbon_emissions_MgCO2e, color=
        y='Forest carbon emissions (Mg CO2e)',
        title='Hard Commodities vs Cabon Emissions',
        color= 'Year')+
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "top")
 ```
 
 ## Pairs plot

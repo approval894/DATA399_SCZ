@@ -62,9 +62,11 @@ ggplot(district_year, aes(x = year, y = total_km2,color=districtcode)) +
   labs(
     x = "Year",
     y = "Deforestation (sq km)",
-    title = "Mining-related deforestation by district over time"
+    title = "Mining-related deforestation by district over time",
+    color='District Code'
   ) +
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "top")
 ```
 
 ```{r}
@@ -80,7 +82,8 @@ df %>%
     fill = "Mining Coridor",
     title = "Deforestation by mining corridor indicator (zona_miner)"
   )+
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "top")
 ```
 
 ```{r}
@@ -200,7 +203,8 @@ ggplot(fig3_data, aes(x = year, y = tc_loss_ha, color = country)) +
     y = "Tree cover loss (ha)",
     color = "Country"
   ) +
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "top")
 ```
 
 ```{r}
@@ -222,7 +226,8 @@ ggplot(fig4_data, aes(x = country, y = total_loss_ha, fill = driver)) +
     y = "Total tree cover loss (ha)",
     fill = "Driver"
   ) +
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "top")
 ```
 
 ```{r}
@@ -242,5 +247,6 @@ ggplot(fig8_data, aes(x = year, y = cumulative_loss_ha, color = country)) +
     y = "Cumulative loss (ha)",
     color = "Country"
   ) +
-  theme_bw()
+  theme_bw()+
+  theme(legend.position = "top")
 ```
