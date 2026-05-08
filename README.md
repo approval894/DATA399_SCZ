@@ -12,8 +12,8 @@ This project will analyze mining-related deforestation within a defined region a
 
 
 ## Author Contributions:
-- **Saul Lazano**: 
-- **Cody Timarong**: Contributed to the background, relevant policies, audience and stakeholders, status quo, and problem description of the white paper. Added the deforestation hotspot figure to the repository and helped revise the README and set up the author contribution statement section. 
+- **Saul Lazano**: Completed exploratory data analysis, model creation, and further analysis of the data for the in-class and SSRD presentation. Searched and found about half of the sources used for the white paper. Contributed to the solutions description, recommendations, conclusion, and figures of the white paper.
+- **Cody Timarong**: Contributed to the background, relevant policies, audience, and stakeholders, status quo, and problem description of the white paper. Added the deforestation hotspot figure to the repository and helped revise the README and set up the author contribution statement section. 
 
 # Datasets
 
