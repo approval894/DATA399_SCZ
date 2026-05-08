@@ -8,6 +8,9 @@ This problem affects multiple stakeholders and rightsholders in different ways. 
 
 This project will analyze mining-related deforestation within a defined region and time period, examining how proximity to infrastructure and land-use designations influence forest loss. By narrowing the scope to a specific geographic area and dataset, the project is feasible within a two-month timeframe.
 
+<img width="635" height="420" alt="image" src="https://github.com/user-attachments/assets/058860f1-f0cf-42b1-9a2a-b87d97ea54e8" />
+
+
 # Datasets
 
 ## Source 1:
