@@ -11,6 +11,9 @@ This project will analyze mining-related deforestation within a defined region a
 <img width="635" height="420" alt="image" src="https://github.com/user-attachments/assets/058860f1-f0cf-42b1-9a2a-b87d97ea54e8" />
 
 
+## Author Contributions:
+
+
 # Datasets
 
 ## Source 1:
